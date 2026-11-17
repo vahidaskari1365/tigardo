@@ -6,6 +6,10 @@ import {
   ChevronLeft,
   Heart,
   Minus,
+  Move,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
   PackageCheck,
   Plus,
   RefreshCw,
@@ -17,7 +21,6 @@ import {
 } from "lucide-react";
 import {
   FREE_SHIPPING,
-  IMG,
   PRODUCTS,
   SEARCH_TAGS,
   faNum,
@@ -25,6 +28,7 @@ import {
 } from "../lib/data";
 import { favoriteProducts, useShop } from "../lib/store";
 import { cn } from "../utils/cn";
+import Product3DViewer from "./Product3DViewer";
 import { ColorDot, QtyStepper, Stars } from "./ui";
 
 /* ============================ search dialog ============================ */
@@ -590,13 +594,15 @@ export function ProductModal() {
   const [colorIndex, setColorIndex] = useState(0);
   const [legIndex, setLegIndex] = useState(0);
   const [qty, setQty] = useState(1);
-  const [gallery, setGallery] = useState(0);
+  const [viewerAngle, setViewerAngle] = useState(28);
+  const [viewerZoom, setViewerZoom] = useState(1);
 
   useEffect(() => {
     setColorIndex(0);
     setLegIndex(0);
     setQty(1);
-    setGallery(0);
+    setViewerAngle(28);
+    setViewerZoom(1);
   }, [activeProduct?.id]);
 
   useEffect(() => {
@@ -607,13 +613,6 @@ export function ProductModal() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [activeProduct, closeProduct]);
-
-  const images = useMemo(() => {
-    if (!activeProduct) return [];
-    return Array.from(
-      new Set([activeProduct.image, activeProduct.secondary, IMG.roomLiving]),
-    );
-  }, [activeProduct]);
 
   if (!activeProduct) return null;
 
@@ -645,13 +644,21 @@ export function ProductModal() {
 
         <div className="grid md:grid-cols-2">
           <div className="relative flex flex-col bg-cream-200">
-            <div className="tile relative flex min-h-[280px] flex-1 items-center justify-center p-5 md:min-h-[440px]">
-              <img
-                src={images[gallery]}
-                alt={product.name}
-                className="max-h-[360px] w-auto max-w-full object-contain drop-shadow-xl md:max-h-[400px]"
+            <div className="tile relative min-h-[320px] flex-1 overflow-hidden md:min-h-[440px]">
+              <Product3DViewer
+                product={product}
+                color={color}
+                leg={leg}
+                angle={viewerAngle}
+                zoom={viewerZoom}
+                onAngleChange={setViewerAngle}
+                onZoomChange={setViewerZoom}
+                showStatus={false}
+                compact
+                className="absolute inset-0"
               />
-              <div className="absolute start-3 top-3 flex flex-col gap-1.5">
+
+              <div className="pointer-events-none absolute start-3 top-3 z-10 flex flex-col gap-1.5">
                 {product.badge ? (
                   <span className="rounded-full bg-navy px-2.5 py-1 text-[9px] font-bold text-cream">
                     {product.badge}
@@ -664,25 +671,45 @@ export function ProductModal() {
                   </span>
                 ) : null}
               </div>
-            </div>
-            <div className="flex items-center justify-center gap-2 bg-cream-200 px-4 pb-4">
-              {images.map((image, index) => (
+
+              <span className="pointer-events-none absolute bottom-3 start-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/75 px-2.5 py-1 text-[9px] font-medium text-navy/75 backdrop-blur">
+                <Move size={11} />
+                بکشید تا بچرخد
+              </span>
+
+              <div className="absolute bottom-3 end-3 z-10 flex items-center gap-1.5">
                 <button
-                  key={image}
                   type="button"
-                  onClick={() => setGallery(index)}
-                  aria-label={`تصویر ${index + 1}`}
-                  aria-pressed={gallery === index}
-                  className={cn(
-                    "h-12 w-12 overflow-hidden rounded-lg border-2 bg-white transition-all",
-                    gallery === index
-                      ? "border-brass"
-                      : "border-white/60 opacity-70 hover:opacity-100",
-                  )}
+                  onClick={() => setViewerZoom((value) => Math.min(1.5, +(value + 0.1).toFixed(2)))}
+                  aria-label="بزرگ‌نمایی مدل"
+                  className="grid h-8 w-8 place-items-center rounded-full border border-white/70 bg-white/80 text-navy shadow-sm backdrop-blur transition-colors hover:bg-white"
                 >
-                  <img src={image} alt="" className="h-full w-full object-cover" />
+                  <ZoomIn size={14} />
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setViewerZoom((value) => Math.max(0.8, +(value - 0.1).toFixed(2)))}
+                  aria-label="کوچک‌نمایی مدل"
+                  className="grid h-8 w-8 place-items-center rounded-full border border-white/70 bg-white/80 text-navy shadow-sm backdrop-blur transition-colors hover:bg-white"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewerAngle(28);
+                    setViewerZoom(1);
+                  }}
+                  aria-label="بازنشانی نمای مدل"
+                  className="grid h-8 w-8 place-items-center rounded-full border border-white/70 bg-white/80 text-navy shadow-sm backdrop-blur transition-colors hover:bg-white"
+                >
+                  <RotateCcw size={13} />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between bg-cream-200 px-4 py-3 text-[9px] text-muted">
+              <span>نمای واقعی WebGL · {faNum(Math.round(viewerAngle))}°</span>
+              <span className="rounded-full bg-white/75 px-2 py-1 text-navy/65">۳۶۰ درجه</span>
             </div>
           </div>
 

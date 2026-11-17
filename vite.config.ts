@@ -16,4 +16,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  // Arena previews are proxied through a generated e2b.app host.
+  server: {
+    host: "0.0.0.0",
+    allowedHosts: true,
+  },
 });
