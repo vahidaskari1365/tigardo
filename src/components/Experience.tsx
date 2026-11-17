@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   ArrowUpLeft,
@@ -19,6 +19,7 @@ import {
 import { BUNDLE, IMG, PRODUCTS, faNum, faPrice, type Product } from "../lib/data";
 import { useShop } from "../lib/store";
 import { cn } from "../utils/cn";
+import Product3DViewer from "./Product3DViewer";
 import { ColorDot, QtyStepper, SectionHead, Stars } from "./ui";
 
 const configurators = ["ava", "olivia", "neo"].map(
@@ -27,7 +28,7 @@ const configurators = ["ava", "olivia", "neo"].map(
 
 const demoTabs = [
   { id: "3d", label: "نمایش سه‌بعدی" },
-  { id: "ar", label: "واقعیت افزوده" },
+  { id: "ar", label: "نمایش در فضا" },
   { id: "specs", label: "مشخصات" },
 ] as const;
 
@@ -41,11 +42,9 @@ function Configurator() {
   const [legIndex, setLegIndex] = useState(0);
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState<DemoTab>("3d");
-  const [angle, setAngle] = useState(-14);
+  const [angle, setAngle] = useState(28);
   const [zoom, setZoom] = useState(1);
-  const [dragging, setDragging] = useState(false);
   const [arActive, setArActive] = useState(false);
-  const drag = useRef({ x: 0, angle: -14 });
 
   const active = configurators.find((item) => item.id === activeId) ?? configurators[0];
   const color = active.colors[Math.min(colorIndex, active.colors.length - 1)];
@@ -57,28 +56,13 @@ function Configurator() {
     setColorIndex(0);
     setLegIndex(0);
     setQty(1);
-    setAngle(-14);
+    setAngle(28);
     setZoom(1);
     setArActive(false);
   };
 
-  const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (tab === "specs") return;
-    setDragging(true);
-    drag.current = { x: event.clientX, angle };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-
-  const moveDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragging) return;
-    const next = drag.current.angle + (event.clientX - drag.current.x) * 0.45;
-    setAngle(Math.max(-50, Math.min(50, Math.round(next))));
-  };
-
-  const endDrag = () => setDragging(false);
-
   const resetView = () => {
-    setAngle(-14);
+    setAngle(28);
     setZoom(1);
   };
 
@@ -121,21 +105,10 @@ function Configurator() {
                 tab === "ar" ? "bg-navy/10" : "tile",
               )}
             >
-              {tab === "ar" ? (
-                <>
-                  <img
-                    src={IMG.roomLiving}
-                    alt="پیش‌نمایش محصول در فضای واقعی"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/45 via-transparent to-navy-deep/15" />
-                </>
-              ) : null}
-
               {/* top chips */}
               <div className="absolute inset-x-3 top-3 z-30 flex items-start justify-between gap-2">
                 <span className="rounded-full border border-white/50 bg-cream/90 px-2.5 py-1 text-[9px] font-semibold text-navy backdrop-blur">
-                  {tab === "ar" ? "AR DEMO · نسخه نمایشی" : "۳۶۰° LIVE VIEW"}
+                  {tab === "ar" ? "ROOM PREVIEW · نسخه نمایشی" : "۳۶۰° LIVE VIEW"}
                 </span>
                 <div className="flex flex-col gap-1.5">
                   <button
@@ -191,67 +164,35 @@ function Configurator() {
                 ))}
               </div>
 
-              {/* product */}
-              <div
-                onPointerDown={startDrag}
-                onPointerMove={moveDrag}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                onPointerLeave={endDrag}
-                className={cn(
-                  "relative flex min-h-[330px] flex-1 select-none touch-pan-y items-center justify-center sm:min-h-[380px]",
-                  dragging ? "cursor-grabbing" : "cursor-grab",
+              {/* Real WebGL product stage — the product is made of Three.js meshes, not a rotated image. */}
+              <div className="relative min-h-[330px] flex-1 sm:min-h-[380px]">
+                {tab === "ar" ? (
+                  <>
+                    <img
+                      src={IMG.roomLiving}
+                      alt="پیش‌نمایش محصول در فضای واقعی"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/45 via-transparent to-navy-deep/15" />
+                  </>
+                ) : (
+                  <>
+                    <span className="pointer-events-none absolute left-1/2 top-1/2 z-[1] h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-brass/40 sm:h-[285px] sm:w-[285px]" />
+                    <span className="pointer-events-none absolute bottom-14 left-1/2 z-[1] h-8 w-[190px] -translate-x-1/2 rounded-[50%] bg-navy/15 blur-lg" />
+                  </>
                 )}
-              >
-                {tab === "3d" ? (
-                  <>
-                    <span className="pointer-events-none absolute h-[250px] w-[250px] rounded-full border border-dashed border-brass/40 sm:h-[285px] sm:w-[285px]" />
-                    <span className="pointer-events-none absolute bottom-14 h-8 w-[190px] rounded-[50%] bg-navy/15 blur-lg" />
-                  </>
-                ) : null}
 
-                <img
-                  key={active.id}
-                  src={active.image}
-                  alt={`${active.name} — نمای ${tab === "ar" ? "واقعیت افزوده" : "سه‌بعدی"}`}
-                  draggable={false}
-                  className={cn(
-                    "relative z-10 h-[265px] w-auto max-w-[80%] object-contain drop-shadow-[0_28px_30px_rgba(8,26,38,0.28)] transition-transform duration-100 sm:h-[315px]",
-                    tab === "ar" ? "mix-blend-multiply" : "",
-                  )}
-                  style={{
-                    transform: `perspective(1300px) rotateY(${angle}deg) scale(${zoom})`,
-                  }}
+                <Product3DViewer
+                  product={active}
+                  color={color}
+                  leg={leg}
+                  angle={angle}
+                  zoom={zoom}
+                  onAngleChange={setAngle}
+                  onZoomChange={setZoom}
+                  showStatus={false}
+                  className="absolute inset-0 z-10"
                 />
-
-                {tab !== "ar" ? (
-                  <>
-                    <div
-                      className="pointer-events-none absolute inset-0 z-20"
-                      style={{
-                        background: color.hex,
-                        opacity: color.name === active.colors[0].name ? 0.14 : 0.5,
-                        mixBlendMode: "multiply",
-                        maskImage:
-                          "radial-gradient(ellipse 52% 48% at 50% 50%, #000 45%, transparent 78%)",
-                        WebkitMaskImage:
-                          "radial-gradient(ellipse 52% 48% at 50% 50%, #000 45%, transparent 78%)",
-                      }}
-                    />
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[38%]"
-                      style={{
-                        background: `linear-gradient(to top, ${leg.hex}, transparent 75%)`,
-                        opacity: 0.22,
-                        mixBlendMode: "multiply",
-                        maskImage:
-                          "radial-gradient(ellipse 48% 85% at 50% 100%, #000 35%, transparent 80%)",
-                        WebkitMaskImage:
-                          "radial-gradient(ellipse 48% 85% at 50% 100%, #000 35%, transparent 80%)",
-                      }}
-                    />
-                  </>
-                ) : null}
 
                 {tab === "ar" ? (
                   <>
@@ -270,13 +211,13 @@ function Configurator() {
                       className="absolute bottom-3 end-3 z-30 inline-flex items-center gap-1.5 rounded-full bg-cream/95 px-3 py-2 text-[10px] font-bold text-navy backdrop-blur transition-colors hover:bg-brass"
                     >
                       <Scan size={13} />
-                      {arActive ? "دوربین فعال است" : "فعال‌سازی دوربین"}
+                      {arActive ? "پیش‌نمایش فعال است" : "فعال‌سازی پیش‌نمایش"}
                     </button>
                   </>
                 ) : (
                   <span className="pointer-events-none absolute bottom-3 end-3 z-30 inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/75 px-2.5 py-1 text-[9px] font-medium text-navy/70 backdrop-blur">
                     <Move size={11} />
-                    برای چرخش بکشید
+                    مدل واقعی — برای چرخش بکشید
                   </span>
                 )}
               </div>
@@ -284,15 +225,15 @@ function Configurator() {
               {/* rotation bar */}
               <div className="relative z-30 flex items-center gap-3 border-t border-ink/8 bg-white/70 px-4 py-2.5 backdrop-blur">
                 <span className="shrink-0 text-[10px] font-semibold tabular-nums text-navy/70">
-                  {faNum(Math.abs(angle))}°
+                  {faNum(Math.round(angle))}°
                 </span>
                 <input
                   type="range"
-                  min={-50}
-                  max={50}
+                  min={0}
+                  max={360}
                   value={angle}
                   onChange={(event) => setAngle(Number(event.target.value))}
-                  aria-label="چرخش محصول"
+                  aria-label="چرخش ۳۶۰ درجه محصول"
                   className="h-1 w-full cursor-pointer rounded-full bg-cream-300"
                 />
                 <span className="shrink-0 rounded-full bg-cream-200 px-2 py-0.5 text-[9px] font-semibold text-navy/60">
